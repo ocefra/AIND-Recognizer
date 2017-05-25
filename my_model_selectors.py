@@ -124,27 +124,22 @@ class SelectorDIC(ModelSelector):
                 # Train model for current word.
                 model = self.base_model(num_states=n)
                 logL = model.score(self.X, self.lengths)
-                #print("    MODEL TRAINED AND SCORED")
+                #print("    MODEL TRAINED AND EVALUATED")
                 
-                # Train models for all other words and compute their average logL.
+                # Evaluate the model (logL) on all other words and compute the average logL.
                 # Initialise counts needed for computing the average.
                 sum_other_logL = 0 
-                num_other_scored = 0 # successfully trained and scored
+                num_other_scored = 0 # successfully trained and evaluated
                 
                 other_words = self.words.keys()
                 for other_word in other_words:
                     other_word_X, other_word_lengths = self.hwords[other_word]
                     try:
-                        other_word_model = GaussianHMM(n_components=n, covariance_type="diag",
-                                                       n_iter=1000, random_state=self.random_state,
-                                                       verbose=False).fit(other_word_X, other_word_lengths)
-                        #try:
-                        other_word_logL = other_word_model.score(other_word_X, other_word_lengths)
-                        sum_other_logL += other_word_logL
+                        sum_other_logL += model.score(other_word_X, other_word_lengths)
                         num_other_scored += 1
-                        #print("    {}: model trained and scored".format(other_word))
+                        #print("    model evaluated on {}".format(other_word))
                     except:
-                        #print("    {}: model could not be trained or scored".format(other_word))
+                        #print("    model could not be evaluated on {}".format(other_word))
                         pass
                 avg_other_logL = sum_other_logL / num_other_scored
                 dic = logL - avg_other_logL
@@ -154,7 +149,7 @@ class SelectorDIC(ModelSelector):
                     largest_dic, best_model = dic, model
             except:
                 pass
-                #print("    MODEL COULD NOT BE TRAINED OR SCORED")
+                #print("    MODEL COULD NOT BE TRAINED OR EVALUATED")
                 #print()
         #print("BEST DIC: {}".format(largest_dic))
         return best_model
