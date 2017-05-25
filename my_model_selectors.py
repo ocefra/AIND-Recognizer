@@ -106,7 +106,7 @@ class SelectorDIC(ModelSelector):
     https://discussions.udacity.com/t/dic-criteria-clarification-of-understanding/233161/2
     We are trying to find the model that gives a high likelihood(small negative
     number) to the original word and low likelihood(very big negative number) to
-    the other words. So DIC score is
+    the other words. So the DIC score is
 
     DIC = log(P(original world)) - average(log(P(otherwords)))
     '''
@@ -127,7 +127,7 @@ class SelectorDIC(ModelSelector):
                 #print("    MODEL TRAINED AND SCORED")
                 
                 # Train models for all other words and compute their average logL.
-                # Counts needed for computing the average
+                # Initialise counts needed for computing the average.
                 sum_other_logL = 0 
                 num_other_scored = 0 # successfully trained and scored
                 
@@ -168,5 +168,40 @@ class SelectorCV(ModelSelector):
     def select(self):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-        # TODO implement model selection using CV
-        raise NotImplementedError
+        highest_avg_test_logL, best_n = -math.inf, None
+
+        for n in range(self.min_n_components, self.max_n_components+1):
+            # Split the training data into k folds.
+            k = 3
+            # Do not split if fewer observations than folds.
+            if(len(self.sequences) < k):
+                break
+            split_method = KFold(n_splits=k, shuffle=False, random_state=self.random_state)
+            # Initialise counts needed for computing the average logL on the test folds.
+            sum_test_logL = 0 
+            num_test_scored = 0 # successfully trained and scored
+            # Make each fold the test fold in turn.
+            for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
+                train_X, train_lengths = combine_sequences(cv_train_idx, self.sequences)
+                test_X, test_lengths = combine_sequences(cv_test_idx, self.sequences)
+                # Fit an HMM model on the training folds.
+                try:
+                    model = GaussianHMM(n_components=n, covariance_type="diag", n_iter=1000,
+                                        random_state=self.random_state,
+                                        verbose=False).fit(train_X, train_lengths)
+                    # Score the model on the test fold.
+                    sum_test_logL += model.score(test_X, test_lengths)
+                    num_test_scored += 1
+                except:
+                    pass
+            avg_test_logL = sum_test_logL / num_test_scored
+            if avg_test_logL > highest_avg_test_logL:
+                highest_avg_test_logL, best_n = avg_test_logL, n
+
+        # Once we have our optimal number of states, train a model on the full
+        # training set with that optimal number of states as a parameter, and
+        # return that model. If no optimal number of states has been found,
+        # simply return a model trained on the full training set with the
+        # selector's constant number of states.
+        return self.base_model(best_n) if best_n is not None else self.base_model(self.n_constant)
+
