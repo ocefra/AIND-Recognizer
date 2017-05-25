@@ -76,8 +76,23 @@ class SelectorBIC(ModelSelector):
         """
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-        # TODO implement model selection based on BIC scores
-        raise NotImplementedError
+        # number of features
+        d = len(self.X[0])
+        # number of observations
+        N = len(self.X)
+        lowest_bic, best_model = math.inf, None
+        for n in range(self.min_n_components, self.max_n_components+1):
+            model = self.base_model(num_states=n)
+            try:
+                logL = model.score(self.X, self.lengths)
+                # number of parameters
+                p = n * n + 2 * n * d - 1
+                bic = -2 * logL + p * math.log(N)
+                if bic < lowest_bic:
+                    lowest_bic, best_model = bic, model
+            except:
+                pass
+        return best_model
 
 
 class SelectorDIC(ModelSelector):
@@ -87,13 +102,62 @@ class SelectorDIC(ModelSelector):
     Document Analysis and Recognition, 2003. Proceedings. Seventh International Conference on. IEEE, 2003.
     http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.58.6208&rep=rep1&type=pdf
     DIC = log(P(X(i)) - 1/(M-1)SUM(log(P(X(all but i))
+
+    https://discussions.udacity.com/t/dic-criteria-clarification-of-understanding/233161/2
+    We are trying to find the model that gives a high likelihood(small negative
+    number) to the original word and low likelihood(very big negative number) to
+    the other words. So DIC score is
+
+    DIC = log(P(original world)) - average(log(P(otherwords)))
     '''
 
     def select(self):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-        # TODO implement model selection based on DIC scores
-        raise NotImplementedError
+        largest_dic, best_model = -math.inf, None
+
+        #print("TRAINING WORD {}".format(self.this_word))
+        for n in range(self.min_n_components, self.max_n_components+1):
+            #print("    ====================")
+            #print("    {} STATES".format(n))
+            try:
+                # Train model for current word.
+                model = self.base_model(num_states=n)
+                logL = model.score(self.X, self.lengths)
+                #print("    MODEL TRAINED AND SCORED")
+                
+                # Train models for all other words and compute their average logL.
+                # Counts needed for computing the average
+                sum_other_logL = 0 
+                num_other_scored = 0 # successfully trained and scored
+                
+                other_words = self.words.keys()
+                for other_word in other_words:
+                    other_word_X, other_word_lengths = self.hwords[other_word]
+                    try:
+                        other_word_model = GaussianHMM(n_components=n, covariance_type="diag",
+                                                       n_iter=1000, random_state=self.random_state,
+                                                       verbose=False).fit(other_word_X, other_word_lengths)
+                        #try:
+                        other_word_logL = other_word_model.score(other_word_X, other_word_lengths)
+                        sum_other_logL += other_word_logL
+                        num_other_scored += 1
+                        #print("    {}: model trained and scored".format(other_word))
+                    except:
+                        #print("    {}: model could not be trained or scored".format(other_word))
+                        pass
+                avg_other_logL = sum_other_logL / num_other_scored
+                dic = logL - avg_other_logL
+                #print("  DIC = {}".format(dic))
+                #print()
+                if dic > largest_dic:
+                    largest_dic, best_model = dic, model
+            except:
+                pass
+                #print("    MODEL COULD NOT BE TRAINED OR SCORED")
+                #print()
+        #print("BEST DIC: {}".format(largest_dic))
+        return best_model
 
 
 class SelectorCV(ModelSelector):
