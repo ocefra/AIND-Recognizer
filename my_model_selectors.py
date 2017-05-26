@@ -124,12 +124,12 @@ class SelectorDIC(ModelSelector):
                 # Train model for current word.
                 model = self.base_model(num_states=n)
                 logL = model.score(self.X, self.lengths)
-                #print("    MODEL TRAINED AND EVALUATED")
+                #print("    MODEL TRAINED AND SCORED")
                 
                 # Evaluate the model (logL) on all other words and compute the average logL.
                 # Initialise counts needed for computing the average.
                 sum_other_logL = 0 
-                num_other_scored = 0 # successfully trained and evaluated
+                num_other_scored = 0 # successfully trained and scored
                 
                 other_words = self.words.keys()
                 for other_word in other_words:
@@ -137,9 +137,9 @@ class SelectorDIC(ModelSelector):
                     try:
                         sum_other_logL += model.score(other_word_X, other_word_lengths)
                         num_other_scored += 1
-                        #print("    model evaluated on {}".format(other_word))
+                        #print("    model scored on {}".format(other_word))
                     except:
-                        #print("    model could not be evaluated on {}".format(other_word))
+                        #print("    model could not be scored on {}".format(other_word))
                         pass
                 avg_other_logL = sum_other_logL / num_other_scored
                 dic = logL - avg_other_logL
@@ -149,7 +149,7 @@ class SelectorDIC(ModelSelector):
                     largest_dic, best_model = dic, model
             except:
                 pass
-                #print("    MODEL COULD NOT BE TRAINED OR EVALUATED")
+                #print("    MODEL COULD NOT BE TRAINED OR SCORED")
                 #print()
         #print("BEST DIC: {}".format(largest_dic))
         return best_model
@@ -189,8 +189,8 @@ class SelectorCV(ModelSelector):
                     num_test_scored += 1
                 except:
                     pass
-            avg_test_logL = sum_test_logL / num_test_scored
-            if avg_test_logL > highest_avg_test_logL:
+            avg_test_logL = sum_test_logL / num_test_scored if num_test_scored else None
+            if avg_test_logL and avg_test_logL > highest_avg_test_logL:
                 highest_avg_test_logL, best_n = avg_test_logL, n
 
         # Once we have our optimal number of states, train a model on the full
@@ -198,5 +198,5 @@ class SelectorCV(ModelSelector):
         # return that model. If no optimal number of states has been found,
         # simply return a model trained on the full training set with the
         # selector's constant number of states.
-        return self.base_model(best_n) if best_n is not None else self.base_model(self.n_constant)
+        return self.base_model(best_n) if best_n else self.base_model(self.n_constant)
 
