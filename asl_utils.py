@@ -13,7 +13,6 @@ def show_errors(guesses: list, test_set: SinglesData):
     :param test_set: SinglesData object
     :return:
         nothing returned, prints error report
-        My change: changed to return WER
 
     WER = (S+I+D)/N  but we have no insertions or deletions for isolated words so WER = S/N
     """
@@ -26,9 +25,7 @@ def show_errors(guesses: list, test_set: SinglesData):
         if guesses[word_id] != test_set.wordlist[word_id]:
             S += 1
 
-    wer = float(S) / float(N) # my addition
-    #print("\n**** WER = {}".format(float(S) / float(N)))
-    print("\n**** WER = {}".format(wer)) # my addition
+    print("\n**** WER = {}".format(float(S) / float(N)))
     print("Total correct: {} out of {}".format(N - S, N))
     print('Video  Recognized                                                    Correct')
     print('=====================================================================================================')
@@ -39,7 +36,61 @@ def show_errors(guesses: list, test_set: SinglesData):
             if recognized_sentence[i] != correct_sentence[i]:
                 recognized_sentence[i] = '*' + recognized_sentence[i]
         print('{:5}: {:60}  {}'.format(video_num, ' '.join(recognized_sentence), ' '.join(correct_sentence)))
-    return wer 
+
+
+def write_errors_to_file(guesses: list, test_set: SinglesData, file_name):
+    """ Write WER and sentence differences in tabular form to a file
+
+    :param guesses: list of test item answers, ordered
+    :param test_set: SinglesData object
+    :return: nothing returned, write error report to file
+
+    WER = (S+I+D)/N  but we have no insertions or deletions for isolated words so WER = S/N
+    """
+    S = 0
+    N = len(test_set.wordlist)
+    num_test_words = len(test_set.wordlist)
+    if len(guesses) != num_test_words:
+        print("Size of guesses must equal number of test words ({})!".format(num_test_words))
+    for word_id in range(num_test_words):
+        if guesses[word_id] != test_set.wordlist[word_id]:
+            S += 1
+
+    with open(out_file, 'a') as out_file:
+        out_file.write("\n**** WER = {}\n".format(float(S) / float(N)))
+        out_file.write("Total correct: {} out of {}\n".format(N - S, N))
+        out_file.write('Video  Recognized
+                Correct\n')
+        out_file.write('=' * 101 + '\n')
+        for video_num in test_set.sentences_index:
+            correct_sentence = [test_set.wordlist[i] for i in test_set.sentences_index[video_num]]
+            recognized_sentence = [guesses[i] for i in test_set.sentences_index[video_num]]
+            for i in range(len(recognized_sentence)):
+                if recognized_sentence[i] != correct_sentence[i]:
+                    recognized_sentence[i] = '*' + recognized_sentence[i]
+            out_file.write('{:5}: {:60}  {}'.format(video_num, ' '.join(recognized_sentence),
+                                                               ' '.join(correct_sentence)))
+
+
+def wer(guesses: list, test_set: SinglesData):
+    """ Compute WER
+
+    :param guesses: list of test item answers, ordered
+    :param test_set: SinglesData object
+    :return: WER
+
+    WER = (S+I+D)/N  but we have no insertions or deletions for isolated words so WER = S/N
+    """
+    S = 0
+    N = len(test_set.wordlist)
+    num_test_words = len(test_set.wordlist)
+    if len(guesses) != num_test_words:
+        print("Size of guesses must equal number of test words ({})!".format(num_test_words))
+    for word_id in range(num_test_words):
+        if guesses[word_id] != test_set.wordlist[word_id]:
+            S += 1
+
+    return float(S) / float(N)
 
 
 def getKey(item):
