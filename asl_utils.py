@@ -39,7 +39,7 @@ def show_errors(guesses: list, test_set: SinglesData):
 
 
 def write_errors_to_file(guesses: list, test_set: SinglesData, file_name):
-    """ Write WER and sentence differences in tabular form to a file
+    """ Write WER and sentence differences in tabular form to a file --- Added by me
 
     :param guesses: list of test item answers, ordered
     :param test_set: SinglesData object
@@ -56,11 +56,10 @@ def write_errors_to_file(guesses: list, test_set: SinglesData, file_name):
         if guesses[word_id] != test_set.wordlist[word_id]:
             S += 1
 
-    with open(out_file, 'a') as out_file:
+    with open(file_name, 'a') as out_file:
         out_file.write("\n**** WER = {}\n".format(float(S) / float(N)))
         out_file.write("Total correct: {} out of {}\n".format(N - S, N))
-        out_file.write('Video  Recognized
-                Correct\n')
+        out_file.write('Video  Recognized' + ' ' * 52 + 'Correct\n')
         out_file.write('=' * 101 + '\n')
         for video_num in test_set.sentences_index:
             correct_sentence = [test_set.wordlist[i] for i in test_set.sentences_index[video_num]]
@@ -68,12 +67,12 @@ def write_errors_to_file(guesses: list, test_set: SinglesData, file_name):
             for i in range(len(recognized_sentence)):
                 if recognized_sentence[i] != correct_sentence[i]:
                     recognized_sentence[i] = '*' + recognized_sentence[i]
-            out_file.write('{:5}: {:60}  {}'.format(video_num, ' '.join(recognized_sentence),
-                                                               ' '.join(correct_sentence)))
+            out_file.write('{:5}: {:60}  {}\n'.\
+                    format(video_num, ' '.join(recognized_sentence), ' '.join(correct_sentence)))
 
 
 def wer(guesses: list, test_set: SinglesData):
-    """ Compute WER
+    """ Compute WER --- Added by me
 
     :param guesses: list of test item answers, ordered
     :param test_set: SinglesData object
