@@ -2,15 +2,17 @@
 
 import numpy as np
 # import pandas as pd
-import pickle
+# import pickle
+import cloudpickle
 from asl_data import AslDb
 
 import warnings
-from hmmlearn import GaussianHMM
+import timeit
+# from hmmlearn.hmm import GaussianHMM
 from my_model_selectors import SelectorCV, SelectorBIC, SelectorDIC
 from my_recognizer import recognize
 # from asl_utils import show_errors
-from asl_utils import write_errors_to_file
+from asl_utils import wer, write_errors_to_file
 
 ########################################
 ######## DATA PREPARATION ##############
@@ -204,8 +206,10 @@ all_features = {f_set_name: eval(f_set_name) for f_set_name in all_feature_set_n
 
 # Save the data
 print("Saving data...")
-pickle.dump(asl, open('asl.pickle', 'wb'))
-pickle.dump(all_features, open('features.pickle', 'wb'))
+# pickle.dump(asl, open('asl.pickle', 'wb'))
+# pickle.dump(all_features, open('features.pickle', 'wb'))
+cloudpickle.dump(asl, open('asl_cloudpickled', 'wb'))
+cloudpickle.dump(all_features, open('features_cloudpickled', 'wb'))
 
 
 
@@ -227,42 +231,64 @@ def train_all_words(features, model_selector):
 
 model_selectors = ['SelectorCV', 'SelectorBIC', 'SelectorDIC']
 
-# Keep track of WER for all feature-selector combinations.
+# Keep track of WER and training time for all feature-selector combinations
 wer_all = {}
+training_times_all = {}
 
 # Experiments: try feature-selector combinations
-start = timeit.default_timer()
+print("Training and evaluating recogniser...")
+start_all = timeit.default_timer()
 
 for feature_set in all_features:
     print("===============")
-    print(feature_set, end=" --- ")
+    print("*** " + feature_set + " ***")
     features = all_features[feature_set] # get the actual list of feature names
     print("Building test set...")
     test_set = asl.build_test(features)
     print("Number of test set items: {}".format(test_set.num_items))
     print("Number of test set sentences: {}".format(len(test_set.sentences_index)))
+    print("=====")
 
     for model_selector_name in model_selectors:
+        start_model_selector = timeit.default_timer()
         print("  " + model_selector_name)
+        
         # Get the actual object
         model_selector = eval(model_selector_name)
-        # Initialise dictionary for results
+
+        # Initialise dictionaries for results and for time
         wer_all[feature_set] = {}
+        training_times_all[feature_set] = {}
+
         # Learn model on training data
         print("    Training word models...")
         models = train_all_words(features, model_selector)
+        end_model_selector = timeit.default_timer()
+        time_model_selector = end_model_selector - start_model_selector
+        print("        training time: {} seconds".format(time_model_selector))
+        training_times_all[feature_set][model_selector_name] = time_model_selector
+
         # Recognise on test data
         print("    Evaluating models...")
         probabilities, guesses = recognize(models, test_set)
+
         # Evaluate performance on test data
-        wer = wer(guesses, test_set)
-        print("    WER {}".format(wer))
-        wer_all[features_name][model_selector_name] = wer
-        out_file = 'recognition_' + feature_set + '_' + model_selector_name
-        write_errors_to_file(guesses, test_set, out_file)
+        wer_this = wer(guesses, test_set)
+        print("    WER {}".format(wer_this))
+        wer_all[feature_set][model_selector_name] = wer_this
+
+        # Write recognised and correct text to file
+        result_file = 'recognition_' + feature_set + '_' + model_selector_name
+        write_errors_to_file(guesses, test_set, result_file)
         print()
 
-end = timeit.default_timer()
-total_time = end - start
-print("total time: {}".format(total_time))
+end_all = timeit.default_timer()
+time_all = end_all - start_all
+print("===============")
+print("total time: {} seconds".format(time_all))
+
+# pickle.dump(wer_all, open('wer_all.pickle', 'wb'))
+# pickle.dump(training_times_all, open('training_times_all.pickle', 'wb'))
+cloudpickle.dump(wer_all, open('wer_all_cloudpickled', 'wb'))
+cloudpickle.dump(training_times_all, open('training_times_all_cloudpickled', 'wb'))
 
